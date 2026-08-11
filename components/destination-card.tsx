@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { Check, Clock3, Heart, MapPin, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTrip } from '@/components/trip-provider'
@@ -19,7 +20,9 @@ export function DestinationCard({ destination }: { destination: Destination }) {
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-3xl border bg-card shadow-[0_8px_30px_rgba(31,41,51,0.06)] transition-transform duration-300 hover:-translate-y-1">
       <div className="relative aspect-[16/10] overflow-hidden bg-muted">
-        <Image src={destination.image} alt={`${destination.name} in ${destination.municipality}`} fill priority={destination.id === 'cagsawa-ruins'} sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+        <Link href={`/place/${destination.id}`} aria-label={`View details for ${destination.name}`} className="absolute inset-0">
+          <Image src={destination.image} alt={`${destination.name} in ${destination.municipality}`} fill loading={destination.id === 'cagsawa-ruins' ? 'eager' : 'lazy'} sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+        </Link>
         <button type="button" onClick={() => toggleFavorite(destination.id)} className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-full bg-card/95 text-primary shadow-sm transition-transform hover:scale-105" aria-label={favorite ? `Remove ${destination.name} from favorites` : `Save ${destination.name} to favorites`} aria-pressed={favorite}>
           <Heart className={cn('size-5', favorite && 'fill-secondary text-secondary')} aria-hidden="true" />
         </button>
