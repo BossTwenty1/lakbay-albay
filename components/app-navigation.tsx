@@ -25,7 +25,7 @@ export function Brand() {
 
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/' || pathname.startsWith('/place/')
-  if (href === '/trip') return pathname === '/trip' || pathname === '/preferences'
+  if (href === '/trip') return pathname === '/trip' || pathname === '/preferences' || pathname === '/itinerary'
   return false
 }
 

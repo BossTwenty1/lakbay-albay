@@ -2,23 +2,28 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { destinations } from '@/lib/destinations'
+import { defaultTripPreferences, sanitizeTripPreferences, type TripPreferences } from '@/lib/trip-preferences'
 
 type TripContextValue = {
   selectedIds: string[]
   favoriteIds: string[]
   mustVisitIds: string[]
+  preferences: TripPreferences
   hydrated: boolean
   toggleTrip: (id: string) => void
   removeFromTrip: (id: string) => void
   movePlace: (id: string, direction: 'up' | 'down') => void
   toggleFavorite: (id: string) => void
   toggleMustVisit: (id: string) => void
+  updatePreferences: (updates: Partial<TripPreferences>) => void
+  resetPreferences: () => void
 }
 
 const TripContext = createContext<TripContextValue | null>(null)
 const TRIP_KEY = 'lakbay-albay-trip'
 const FAVORITES_KEY = 'lakbay-albay-favorites'
 const MUST_VISIT_KEY = 'lakbay-albay-must-visit'
+const PREFERENCES_KEY = 'lakbay-albay-preferences'
 const validIds = new Set(destinations.map((destination) => destination.id))
 
 function readIds(key: string) {
@@ -30,10 +35,28 @@ function readIds(key: string) {
   }
 }
 
+function readPreferences() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(PREFERENCES_KEY) ?? 'null')
+    return sanitizeTripPreferences(value)
+  } catch {
+    return defaultTripPreferences
+  }
+}
+
+function writeStorage(key: string, value: unknown) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Storage can be unavailable in private browsing or when the quota is full.
+  }
+}
+
 export function TripProvider({ children }: { children: React.ReactNode }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [mustVisitIds, setMustVisitIds] = useState<string[]>([])
+  const [preferences, setPreferences] = useState<TripPreferences>(defaultTripPreferences)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
@@ -41,20 +64,25 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
     setSelectedIds(selected)
     setFavoriteIds(readIds(FAVORITES_KEY))
     setMustVisitIds(readIds(MUST_VISIT_KEY).filter((id) => selected.includes(id)))
+    setPreferences(readPreferences())
     setHydrated(true)
   }, [])
 
   useEffect(() => {
-    if (hydrated) window.localStorage.setItem(TRIP_KEY, JSON.stringify(selectedIds))
+    if (hydrated) writeStorage(TRIP_KEY, selectedIds)
   }, [hydrated, selectedIds])
 
   useEffect(() => {
-    if (hydrated) window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds))
+    if (hydrated) writeStorage(FAVORITES_KEY, favoriteIds)
   }, [favoriteIds, hydrated])
 
   useEffect(() => {
-    if (hydrated) window.localStorage.setItem(MUST_VISIT_KEY, JSON.stringify(mustVisitIds))
+    if (hydrated) writeStorage(MUST_VISIT_KEY, mustVisitIds)
   }, [hydrated, mustVisitIds])
+
+  useEffect(() => {
+    if (hydrated) writeStorage(PREFERENCES_KEY, preferences)
+  }, [hydrated, preferences])
 
   const removeFromTrip = useCallback((id: string) => {
     setSelectedIds((current) => current.filter((item) => item !== id))
@@ -88,7 +116,18 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
     setMustVisitIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
   }, [])
 
-  const value = useMemo(() => ({ selectedIds, favoriteIds, mustVisitIds, hydrated, toggleTrip, removeFromTrip, movePlace, toggleFavorite, toggleMustVisit }), [selectedIds, favoriteIds, mustVisitIds, hydrated, toggleTrip, removeFromTrip, movePlace, toggleFavorite, toggleMustVisit])
+  const updatePreferences = useCallback((updates: Partial<TripPreferences>) => {
+    setPreferences((current) => {
+      const next = sanitizeTripPreferences({ ...current, ...updates })
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next
+    })
+  }, [])
+
+  const resetPreferences = useCallback(() => {
+    setPreferences(defaultTripPreferences)
+  }, [])
+
+  const value = useMemo(() => ({ selectedIds, favoriteIds, mustVisitIds, preferences, hydrated, toggleTrip, removeFromTrip, movePlace, toggleFavorite, toggleMustVisit, updatePreferences, resetPreferences }), [selectedIds, favoriteIds, mustVisitIds, preferences, hydrated, toggleTrip, removeFromTrip, movePlace, toggleFavorite, toggleMustVisit, updatePreferences, resetPreferences])
 
   return <TripContext.Provider value={value}>{children}</TripContext.Provider>
 }
